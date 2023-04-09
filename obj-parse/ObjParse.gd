@@ -1,6 +1,6 @@
 class_name ObjParse
 
-const debug:=false
+const debug := true
 
 # Obj parser made by Ezcha, updated by Deakcor
 # Created on 7/11/2018
@@ -14,63 +14,65 @@ const debug:=false
 #public
 
 #Create mesh from obj and mtl paths
-static func load_obj(obj_path:String, mtl_path:String="")->Mesh:
-	if mtl_path=="":
-		mtl_path=search_mtl_path(obj_path)
+static func load_obj(obj_path: String, mtl_path: String = "") -> Mesh:
+	if mtl_path == "":
+		mtl_path = search_mtl_path(obj_path)
 	var obj := get_data(obj_path)
 	var mats := {}
-	if mtl_path!="":
+	if mtl_path != "":
 		mats=_create_mtl(get_data(mtl_path),get_mtl_tex(mtl_path))
-	return _create_obj(obj,mats) if obj and mats else null
+	if not mats:
+		print("No material detected...")
+	return _create_obj(obj, mats) if obj else null
 
 #Create mesh from obj, materials. Materials should be {"matname":data}
-static func load_obj_from_buffer(obj_data:String,materials:Dictionary)->Mesh:
-	return _create_obj(obj_data,materials)
+static func load_obj_from_buffer(obj_data: String, materials: Dictionary) -> Mesh:
+	return _create_obj(obj_data, materials)
 
 #Create materials
-static func load_mtl_from_buffer(mtl_data:String,textures:Dictionary)->Dictionary:
-	return _create_mtl(mtl_data,textures)
+static func load_mtl_from_buffer(mtl_data: String, textures: Dictionary) -> Dictionary:
+	return _create_mtl(mtl_data, textures)
 	
 #Get data from file path
-static func get_data(path:String)->String:
-	if path!="":
+static func get_data(path: String) -> String:
+	if path != "":
 		var file := File.new()
-		var err:=file.open(path, File.READ)
-		if err==OK:
-			var res:=file.get_as_text()
+		var err := file.open(path, File.READ)
+		if err == OK:
+			var res := file.get_as_text()
 			file.close()
 			return res
 	return ""
 
 #Get textures from mtl path (return {"tex_path":data})
-static func get_mtl_tex(mtl_path:String)->Dictionary:
-	var file_paths:=get_mtl_tex_paths(mtl_path)
+static func get_mtl_tex(mtl_path: String) -> Dictionary:
+	var file_paths := get_mtl_tex_paths(mtl_path)
 	var textures := {}
 	for k in file_paths:
 		textures[k] = _get_image(mtl_path, k).save_png_to_buffer()
 	return textures
 
 #Get textures paths from mtl path
-static func get_mtl_tex_paths(mtl_path:String)->Array:
+static func get_mtl_tex_paths(mtl_path: String) -> Array:
 	var file := File.new()
-	var err:=file.open(mtl_path, File.READ)
+	var err := file.open(mtl_path, File.READ)
 	var paths := []
-	if err==OK:
+	if err == OK:
 		var lines := file.get_as_text().split("\n", false)
 		file.close()
 		for line in lines:
-			var parts = line.replace("\t", "").split(" ", false,1)
+			var parts = line.replace("\t", "").split(" ", false, 1)
 			if parts[0] in ["map_Kd","map_Ks","map_Ka"]:
 				if !parts[1] in paths:
 					paths.push_back(parts[1])
 	return paths
 
 #try to find mtl path from obj path
-static func search_mtl_path(obj_path:String):
-	var mtl_path=obj_path.get_base_dir().plus_file(obj_path.get_file().rsplit(".",false,1)[0]+".mtl")
-	var dir:Directory=Directory.new()
+static func search_mtl_path(obj_path: String):
+	var mtl_path = obj_path.get_base_dir().plus_file(obj_path.get_file().rsplit(".", false, 1)[0] + ".mtl")
+	var dir: Directory = Directory.new()
 	if !dir.file_exists(mtl_path):
-		mtl_path=obj_path.get_base_dir().plus_file(obj_path.get_file()+".mtl")
+		mtl_path = obj_path.get_base_dir().plus_file(obj_path.get_file() + ".mtl")
 	if !dir.file_exists(mtl_path):
 		return ""
 	return mtl_path
@@ -78,10 +80,10 @@ static func search_mtl_path(obj_path:String):
 
 #private
 
-static func _create_mtl(obj:String,textures:Dictionary)->Dictionary:
+static func _create_mtl(obj: String, textures: Dictionary) -> Dictionary:
 	var mats := {}
 	var currentMat:SpatialMaterial = null
-
+	
 	var lines = obj.split("\n", false)
 	for line in lines:
 		var parts = line.replace("\t", "").split(" ", false)
@@ -107,8 +109,8 @@ static func _create_mtl(obj:String,textures:Dictionary)->Dictionary:
 					print("Setting material color " + str(currentMat.albedo_color))
 				pass
 			_:
-				if parts[0] in ["map_Kd","map_Ks","map_Ka"]:
-					var path=line.split(" ", false,1)[1]
+				if parts[0] in ["map_Kd", "map_Ks", "map_Ka"]:
+					var path = line.split(" ", false,1)[1]
 					if textures.has(path):
 						currentMat.albedo_texture = _create_texture(textures[path])
 	return mats
@@ -116,7 +118,7 @@ static func _create_mtl(obj:String,textures:Dictionary)->Dictionary:
 static func _parse_mtl_file(path):
 	return _create_mtl(get_data(path),get_mtl_tex(path))
 
-static func _get_image(mtl_filepath:String, tex_filename:String)->Image:
+static func _get_image(mtl_filepath: String, tex_filename: String) -> Image:
 	if debug:
 		print("    Debug: Mapping texture file " + tex_filename)
 	var texfilepath := tex_filename
@@ -130,9 +132,9 @@ static func _get_image(mtl_filepath:String, tex_filename:String)->Image:
 	img.load(texfilepath)
 	return img
 
-static func _create_texture(data:PoolByteArray):
-	var img:Image = Image.new()
-	var tex:ImageTexture = ImageTexture.new()
+static func _create_texture(data: PoolByteArray):
+	var img: Image = Image.new()
+	var tex: ImageTexture = ImageTexture.new()
 	img.load_png_from_buffer(data)
 	tex.create_from_image(img)
 	return tex
@@ -145,7 +147,7 @@ static func _get_texture(mtl_filepath, tex_filename):
 	return tex
 
 
-static func _create_obj(obj:String,mats:Dictionary)->Mesh:
+static func _create_obj(obj: String, mats: Dictionary) -> Mesh:
 	# Setup
 	var mesh := ArrayMesh.new()
 	var vertices := PoolVector3Array()
@@ -153,10 +155,10 @@ static func _create_obj(obj:String,mats:Dictionary)->Mesh:
 	var uvs := PoolVector2Array()
 	var faces := {}
 	var fans := []
-
+	
 	var firstSurface := true
 	var mat_name := "default"
-	var count_mtl:=0
+	var count_mtl := 0
 	
 	# Parse
 	var lines := obj.split("\n", false)
@@ -181,48 +183,48 @@ static func _create_obj(obj:String,mats:Dictionary)->Mesh:
 				uvs.append(n_uv)
 			"usemtl":
 				# Material group
-				count_mtl+=1
+				count_mtl += 1
 				mat_name = parts[1]
-				if(not faces.has(mat_name)):
-					var mats_keys:=mats.keys()
+				if not faces.has(mat_name):
+					var mats_keys := mats.keys()
 					if !mats.has(mat_name):
-						if mats_keys.size()>count_mtl:
-							mat_name=mats_keys[count_mtl]
+						if mats_keys.size() > count_mtl:
+							mat_name = mats_keys[count_mtl]
 					faces[mat_name] = []
 			"f":
-				if(not faces.has(mat_name)):
-					var mats_keys:=mats.keys()
-					if mats_keys.size()>count_mtl:
-						mat_name=mats_keys[count_mtl]
+				if not faces.has(mat_name):
+					var mats_keys := mats.keys()
+					if mats_keys.size() > count_mtl:
+						mat_name = mats_keys[count_mtl]
 					faces[mat_name] = []
 				# Face
-				if (parts.size() == 4):
+				if parts.size() == 4:
 					# Tri
-					var face = {"v":[], "vt":[], "vn":[]}
+					var face = {"v": [], "vt": [], "vn": []}
 					for map in parts:
 						var vertices_index = map.split("/")
-						if (str(vertices_index[0]) != "f"):
-							face["v"].append(int(vertices_index[0])-1)
-							face["vt"].append(int(vertices_index[1])-1)
-							if (vertices_index.size()>2):
-								face["vn"].append(int(vertices_index[2])-1)
-					if(faces.has(mat_name)):
+						if str(vertices_index[0]) != "f":
+							face["v"].append(int(vertices_index[0]) - 1)
+							face["vt"].append(int(vertices_index[1]) - 1)
+							if vertices_index.size() > 2:
+								face["vn"].append(int(vertices_index[2]) - 1)
+					if faces.has(mat_name):
 						faces[mat_name].append(face)
-				elif (parts.size() > 4):
+				elif parts.size() > 4:
 					# Triangulate
 					var points = []
 					for map in parts:
 						var vertices_index = map.split("/")
-						if (str(vertices_index[0]) != "f"):
+						if str(vertices_index[0]) != "f":
 							var point = []
-							point.append(int(vertices_index[0])-1)
-							point.append(int(vertices_index[1])-1)
-							if (vertices_index.size()>2):
-								point.append(int(vertices_index[2])-1)
+							point.append(int(vertices_index[0]) - 1)
+							point.append(int(vertices_index[1]) - 1)
+							if vertices_index.size() > 2:
+								point.append(int(vertices_index[2]) - 1)
 							points.append(point)
 					for i in (points.size()):
-						if (i != 0):
-							var face = {"v":[], "vt":[], "vn":[]}
+						if i != 0:
+							var face = {"v": [], "vt": [], "vn": []}
 							var point0 = points[0]
 							var point1 = points[i]
 							var point2 = points[i-1]
@@ -232,57 +234,57 @@ static func _create_obj(obj:String,mats:Dictionary)->Mesh:
 							face["vt"].append(point0[1])
 							face["vt"].append(point2[1])
 							face["vt"].append(point1[1])
-							if (point0.size()>2):
+							if point0.size() > 2:
 								face["vn"].append(point0[2])
-							if (point2.size()>2):
+							if point2.size() > 2:
 								face["vn"].append(point2[2])
-							if (point1.size()>2):
+							if point1.size() > 2:
 								face["vn"].append(point1[2])
 							faces[mat_name].append(face)
-
+		
 	# Make tri
 	for matgroup in faces.keys():
 		if debug:
 			print("Creating surface for matgroup " + matgroup + " with " + str(faces[matgroup].size()) + " faces")
-
+		
 		# Mesh Assembler
 		var st = SurfaceTool.new()
 		st.begin(Mesh.PRIMITIVE_TRIANGLES)
 		if !mats.has(matgroup):
-			mats[matgroup]=SpatialMaterial.new()
+			mats[matgroup] = SpatialMaterial.new()
 		st.set_material(mats[matgroup])
 		for face in faces[matgroup]:
-			if (face["v"].size() == 3):
+			if face["v"].size() == 3:
 				# Vertices
 				var fan_v = PoolVector3Array()
 				fan_v.append(vertices[face["v"][0]])
 				fan_v.append(vertices[face["v"][2]])
 				fan_v.append(vertices[face["v"][1]])
-
+				
 				# Normals
 				var fan_vn = PoolVector3Array()
-				if face["vn"].size()>0:
+				if face["vn"].size() > 0:
 					fan_vn.append(normals[face["vn"][0]])
 					fan_vn.append(normals[face["vn"][2]])
 					fan_vn.append(normals[face["vn"][1]])
-
+				
 				# Textures
 				var fan_vt = PoolVector2Array()
-				if face["vt"].size()>0:
-					for k in [0,2,1]:
+				if face["vt"].size() > 0:
+					for k in [0, 2, 1]:
 						var f = face["vt"][k]
-						if f>-1:
+						if f > -1:
 							var uv = uvs[f]
 							fan_vt.append(uv)
-
+				
 				st.add_triangle_fan(fan_v, fan_vt, PoolColorArray(), PoolVector2Array(), fan_vn, [])
 		mesh = st.commit(mesh)
 	for k in mesh.get_surface_count():
-		var mat=mesh.surface_get_material(k)
-		mat_name=""
+		var mat = mesh.surface_get_material(k)
+		mat_name = ""
 		for m in mats:
-			if mats[m]==mat:
-				mat_name=m
+			if mats[m] == mat:
+				mat_name = m
 		mesh.surface_set_name(k,mat_name)
 	# Finish
 	return mesh
